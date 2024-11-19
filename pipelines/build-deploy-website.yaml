@@ -1,0 +1,27 @@
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - pipelines/build-deploy-website.yaml
+      - src/MacroTracker
+variables:
+  buildConfiguration: 'Release'
+
+steps:
+- script: dotnet build --configuration $(buildConfiguration)
+  displayName: 'dotnet build $(buildConfiguration)'
+  workingDirectory: src/MacroTracker
+
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'publish'
+    publishWebProjects: false
+    projects: 'src/MacroTracker'
+- task: AzureWebApp@1
+  inputs:
+    azureSubscription: 'azure-sc'
+    appType: 'webAppLinux'
+    appName: 'app-macro-tracker-website-dev'
+    package: '$(System.DefaultWorkingDirectory)/**/*.zip'
