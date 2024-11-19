@@ -32,9 +32,27 @@ resource "azurerm_linux_web_app" "website" {
     }
   }
 
+  auth_settings_v2 {
+    auth_enabled           = true
+    default_provider       = "google"
+    excluded_paths         = ["/", "/lib/*", "/_framework/*"]
+    unauthenticated_action = "RedirectToLoginPage"
+    require_authentication = true
 
+    google_v2 {
+      client_id                  = var.google_client_id
+      client_secret_setting_name = "GOOGLE_PROVIDER_AUTHENTICATION_SECRET"
+    }
+
+    login {
+      logout_endpoint     = "/.auth/logout"
+      token_store_enabled = true
+
+    }
+  }
   # These become env vars, which can be read by the config provider (nested properties use : which becomes __ )
   app_settings = {
+    GOOGLE_PROVIDER_AUTHENTICATION_SECRET = var.google_client_secret
     # AzureAdB2C__Instance             = "https://cccwebapp.b2clogin.com"
     # AzureAdB2C__Domain               = "cccwebapp.onmicrosoft.com"
     # AzureAdB2C__ClientId             = azuread_application.website.application_id
@@ -47,6 +65,9 @@ resource "azurerm_linux_web_app" "website" {
     # API__BaseUrl         = "https://${azurerm_linux_web_app.api.default_hostname}/api/"
   }
 
+  sticky_settings {
+    app_setting_names = ["GOOGLE_PROVIDER_AUTHENTICATION_SECRET"]
+  }
   logs {
     detailed_error_messages = true
     failed_request_tracing  = true

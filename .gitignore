@@ -402,3 +402,4 @@ FodyWeavers.xsd
 .terraform
 .terraform.lock.hcl
 tfplan
+*.auto.tfvars
