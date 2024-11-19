@@ -1,0 +1,47 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build-website",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "build",
+                "${workspaceFolder}/src/MacroTracker/MacroTracker.csproj",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary"
+            ],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "watch website",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "watch",
+                "run",
+                "--project",
+                "${workspaceFolder}/src/MacroTracker/MacroTracker.csproj"
+            ],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "terraform plan",
+            "command": "terraform plan -out tfplan",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}/infrastructure"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "terraform apply",
+            "command": "terraform apply tfplan",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}/infrastructure"
+            },
+            "problemMatcher": []
+        }
+    ]
+}
