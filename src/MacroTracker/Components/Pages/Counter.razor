@@ -1,5 +1,7 @@
 ﻿@page "/counter"
 @rendermode InteractiveServer
+@inject ILogger<Counter> Logger
+@inject IHttpContextAccessor httpContextAccessor;
 
 <PageTitle>Counter</PageTitle>
 
@@ -15,5 +17,21 @@
     private void IncrementCount()
     {
         currentCount++;
+    }
+
+    protected override void OnInitialized()
+    {
+        Logger.LogTrace("Trace Test");
+        Logger.LogDebug("Debug Test");
+        Logger.LogWarning("Warning Test");
+        
+        if(httpContextAccessor != null && httpContextAccessor.HttpContext != null)
+        {
+            foreach(var header in httpContextAccessor.HttpContext.Request.Headers)
+            {
+                Logger.LogWarning("Header {Header} Value {Value}", header.Key, header.Value);
+            }
+        }
+
     }
 }
