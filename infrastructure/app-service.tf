@@ -35,7 +35,7 @@ resource "azurerm_linux_web_app" "website" {
   auth_settings_v2 {
     auth_enabled           = true
     default_provider       = "google"
-    excluded_paths         = ["/", "/lib/*", "/_framework/*"]
+    excluded_paths         = ["/", "/*.css", "/favicon.png","/lib/*", "/_framework/*"]
     unauthenticated_action = "RedirectToLoginPage"
     require_authentication = true
 
