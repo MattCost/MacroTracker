@@ -13,7 +13,7 @@ steps:
 - task: UseDotNet@2
   inputs:
     packageType: 'sdk'
-    version: '9'
+    version: '9.x'
     includePreviewVersions: true
 
 - script: dotnet build --configuration $(buildConfiguration)
