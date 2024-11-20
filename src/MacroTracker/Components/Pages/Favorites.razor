@@ -6,6 +6,7 @@
 @using Microsoft.EntityFrameworkCore
 @inject ILogger<Today> Logger
 @inject IDbContextFactory<MacroTrackingDbContext> MacroTrackingDbContextFactory
+@inject IHttpContextAccessor httpContextAccessor;
 
 
 <PageTitle>Manage Favorites</PageTitle>
@@ -37,7 +38,7 @@ else
                     <td>@favorite.CarbsGrams</td>
                     <td>@favorite.FiberGrams</td>
                     <td>@favorite.FatGrams</td>
-                    <td><button class="btn btn-secondary" @onclick="async () => await RemoveFavorite(favorite.Id)">X</button></td>
+                    <td><button class="btn btn-secondary" @onclick="async () => await RemoveFavoriteAsync(favorite.Id)">X</button></td>
                 </tr>
             }
         </tbody>
@@ -47,9 +48,8 @@ else
 
 @code {
     bool Loading = true;
-
     List<MacroEntryFavorite> FavoriteTemplates = new();
-
+    string UserId => httpContextAccessor?.HttpContext?.Request.Headers["X-MS-CLIENT-PRINCIPAL-ID"].ToString() ?? "unknown";
     MacroTrackingDbContext Context = default!;
     protected override async Task OnInitializedAsync()
     {
@@ -61,7 +61,8 @@ else
             Context = await MacroTrackingDbContextFactory.CreateDbContextAsync();
             if(Context is not null && Context.Favorites is not null)
             {
-                FavoriteTemplates = Context.Favorites.ToList();
+                FavoriteTemplates = await Context.Favorites.Where(e => e.OwnerId == UserId).ToListAsync();
+
             }
         }
         finally
@@ -71,7 +72,7 @@ else
 
     }
 
-    async Task RemoveFavorite(Guid id)
+    async Task RemoveFavoriteAsync(Guid id)
     {
         Logger.LogDebug("Entering RemoveFavorite Id {Id}", id);
         var dbEntry = await Context.Favorites.FindAsync(id);
