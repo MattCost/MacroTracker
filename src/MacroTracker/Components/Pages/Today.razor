@@ -1,0 +1,270 @@
+﻿@page "/today"
+@using MacroTracker.Models
+@using MacroTracker.Services
+@attribute [StreamRendering]
+@rendermode InteractiveServer
+@using Microsoft.EntityFrameworkCore
+@inject ILogger<Today> Logger
+@inject IDbContextFactory<MacroTrackingDbContext> MacroTrackingDbContextFactory
+@inject IHttpContextAccessor httpContextAccessor;
+
+
+<PageTitle>Macro Tracker</PageTitle>
+
+<h1>Macro Tracker!</h1>
+
+@if (Loading)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Protein</th>
+                <th>Carbs</th>
+                <th>Fiber</th>
+                <th>Fat</th>
+                <th>Calories</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var entry in Entries)
+            {
+                <tr>
+                    <td>@entry.DateTime.ToShortDateString()</td>
+                    <td>@entry.DateTime.ToShortTimeString()</td>
+                    <td>@entry.ProteinGrams</td>
+                    <td>@entry.CarbsGrams</td>
+                    <td>@entry.FiberGrams</td>
+                    <td>@entry.FatGrams</td>
+                    <td>@entry.Calories</td>
+                    <td><button class="btn btn-secondary" @onclick="async () => await RemoveEntryAsync(entry.Id)">X</button></td>
+                </tr>
+            }
+            <tr>
+                <td>Totals</td>
+                <td></td>
+                <td>@TotalProtein</td>
+                <td>@TotalCarbs</td>
+                <td>@TotalFiber</td>
+                <td>@TotalFat</td>
+                <td>@TotalCalories</td>
+                <td></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h3>Add New Entry</h3>
+    <Tracker Name="Protein" @ref="proteinTracker" />
+    <Tracker Name="Carbs" @ref="carbTracker" />
+    <Tracker Name="Fiber" @ref="fiberTracker" />
+    <Tracker Name="Fat" @ref="fatTracker" />
+
+    <div>
+        <button @onclick="AddNewEntryAsync">Add Entry</button>
+    </div>
+    <div>
+        <InputText @bind-Value="favoriteName"></InputText>
+        <button @onclick="SaveAndAddNewEntryAsync">Add + Save as Favorite</button>
+    </div>
+    <div>
+        <InputSelect id="Favorite"Actions @bind-Value="SelectedFavoriteId">
+            @foreach (var favorite in Favorites)
+            {
+                <option value="@favorite.Id">@favorite.Name</option>
+            }
+        </InputSelect>
+        <button @onclick="async () => await AddFromFavoriteAsync(SelectedFavoriteId)">Add</button>
+    </div>
+
+}
+
+@code {
+    bool Loading;
+    List<MacroEntryModel> Entries = new();
+    List<MacroEntryFavorite> Favorites = new();
+    Guid SelectedFavoriteId = Guid.Empty;
+    MacroTrackingDbContext Context = default!;
+    Tracker proteinTracker = default!;
+    Tracker carbTracker = default!;
+    Tracker fiberTracker = default!;
+    Tracker fatTracker = default!;
+
+    string favoriteName = string.Empty;
+
+    double TotalProtein => Entries.Select(entry => entry.ProteinGrams).Sum();
+    double TotalCarbs => Entries.Select(entry => entry.CarbsGrams).Sum();
+    double TotalFiber => Entries.Select(entry => entry.FiberGrams).Sum();
+    double TotalFat => Entries.Select(entry => entry.FatGrams).Sum();
+    double TotalCalories => Entries.Select(entry => entry.Calories).Sum();
+    string UserId => httpContextAccessor?.HttpContext?.Request.Headers["X-MS-CLIENT-PRINCIPAL-ID"].ToString() ?? "unknown";
+
+    protected override async Task OnInitializedAsync()
+    {
+        Loading = true;
+
+        try
+        {
+            Context = await MacroTrackingDbContextFactory.CreateDbContextAsync();
+
+            if (Context is not null && Context.Entries is not null)
+            {
+                var entries = Context.Entries.Where(entry => entry.DateTime > DateTime.Today && entry.OwnerId == UserId);
+
+                if (entries is not null)
+                {
+                    Entries = await entries.ToListAsync();
+                }
+
+                // Can we do it in 1 line, or do we need null checking?
+                Favorites = await Context.Favorites.Where(e => e.OwnerId == UserId).ToListAsync();
+
+            }
+        }
+        finally
+        {
+            Loading = false;
+        }
+    }
+
+    async Task RemoveEntryAsync(Guid id)
+    {
+        var dbEntry = await Context.Entries.FindAsync(id);
+        if (dbEntry is not null)
+        {
+            Context.Entries.Remove(dbEntry);
+            await Context.SaveChangesAsync();
+
+        }
+
+        var localEntry = Entries.SingleOrDefault(e => e.Id == id);
+        if (localEntry is not null)
+        {
+            Entries.Remove(localEntry);
+        }
+
+    }
+
+    async Task AddNewEntryAsync()
+    {
+        if(UserId == "unknown")
+        {
+            Logger.LogError("UserId is unknown, unable to add entry");
+            return;
+        }
+
+        var entry = new MacroEntryModel
+            {
+                ProteinGrams = proteinTracker.Count,
+                CarbsGrams = carbTracker.Count,
+                FiberGrams = fiberTracker.Count,
+                FatGrams = fatTracker.Count,
+                OwnerId = UserId
+            };
+
+        Logger.LogDebug("Entering AddNewEntry. Entry {Entry}", entry);
+
+        Logger.LogDebug("Adding Entry to context");
+        await Context.AddAsync(entry);
+
+        Logger.LogDebug("Saving Changes");
+        await Context.SaveChangesAsync();
+
+        Logger.LogDebug("Adding entry to page list");
+        Entries.Add(entry);
+
+        Logger.LogDebug("Resetting Trackers");
+        proteinTracker.Reset();
+        carbTracker.Reset();
+        fatTracker.Reset();
+        fiberTracker.Reset();
+    }
+
+    async Task SaveAndAddNewEntryAsync()
+    {
+        if(UserId == "unknown")
+        {
+            Logger.LogError("UserId is unknown. Unable to Save Favorite and Add new entry");
+            return;
+        }
+
+        var favorite = new MacroEntryFavorite
+            {
+                Name = favoriteName,
+                ProteinGrams = proteinTracker.Count,
+                CarbsGrams = carbTracker.Count,
+                FiberGrams = fiberTracker.Count,
+                FatGrams = fatTracker.Count,
+                OwnerId = UserId
+            };
+
+        Logger.LogDebug("Entering SaveAndAddNewEntry. Favorite {Favorite`}", favorite);
+
+        Logger.LogDebug("Adding Favorite to context and page model");
+        await Context.AddAsync(favorite);
+        Favorites.Add(favorite);
+
+        await AddFromFavoriteAsync(favorite.Id);
+
+        Logger.LogDebug("Resetting Trackers");
+        proteinTracker.Reset();
+        carbTracker.Reset();
+        fatTracker.Reset();
+        fiberTracker.Reset();
+        favoriteName = string.Empty;
+    }
+
+    async Task AddFromFavoriteAsync(Guid favoriteId)
+    {
+        if(UserId == "unknown")
+        {
+            Logger.LogError("UserId is unknown. Unable to add from favorite");
+            return;
+        }
+
+        Logger.LogDebug("Entering AddFromFavorite. favoriteId {Id}", favoriteId);
+        if(favoriteId == Guid.Empty)
+        {
+            Logger.LogWarning("Invalid Favorite Id provided");
+            return;
+        }
+
+        MacroEntryModel? entryModel = null;
+        var favorite = Favorites.Where(f => f.Id == favoriteId);
+        if(favorite.Any())
+        {
+            Logger.LogDebug("Favorite found in page model");
+            entryModel = new MacroEntryModel(favorite.First());
+        }
+        else
+        {
+            var x = Context.Favorites.Find(favoriteId);
+            if(x != null)
+            {
+                Logger.LogDebug("Favorite found in Database");
+                entryModel = new MacroEntryModel(x);
+            }
+        }
+
+        if(entryModel != null)
+        {
+            Logger.LogDebug("Generated Entry {Entry}", entryModel);
+            Logger.LogDebug("Adding to Context");
+            await Context.AddAsync(entryModel);
+            Logger.LogDebug("Saving changes");
+            await Context.SaveChangesAsync();
+            Logger.LogDebug("Adding to page model");
+            Entries.Add(entryModel);
+        }
+        else
+        {
+            Logger.LogWarning("Favorite Id {Id} not found", favoriteId);
+        }
+    }
+}

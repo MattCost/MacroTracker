@@ -1,0 +1,90 @@
+@page "/favorites"
+@using MacroTracker.Models
+@using MacroTracker.Services
+@attribute [StreamRendering]
+@rendermode InteractiveServer
+@using Microsoft.EntityFrameworkCore
+@inject ILogger<Today> Logger
+@inject IDbContextFactory<MacroTrackingDbContext> MacroTrackingDbContextFactory
+
+
+<PageTitle>Manage Favorites</PageTitle>
+
+<h1>Macro Tracker!</h1>
+@if (Loading)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Protein</th>
+                <th>Carbs</th>
+                <th>Fiber</th>
+                <th>Fat</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach(var favorite in FavoriteTemplates)
+            {
+                <tr>
+                    <td>@favorite.Name</td>
+                    <td>@favorite.ProteinGrams</td>
+                    <td>@favorite.CarbsGrams</td>
+                    <td>@favorite.FiberGrams</td>
+                    <td>@favorite.FatGrams</td>
+                    <td><button class="btn btn-secondary" @onclick="async () => await RemoveFavorite(favorite.Id)">X</button></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+
+@code {
+    bool Loading = true;
+
+    List<MacroEntryFavorite> FavoriteTemplates = new();
+
+    MacroTrackingDbContext Context = default!;
+    protected override async Task OnInitializedAsync()
+    {
+        Logger.LogDebug("Entering OnInitializedAsync");
+        Loading = true;
+
+        try
+        {
+            Context = await MacroTrackingDbContextFactory.CreateDbContextAsync();
+            if(Context is not null && Context.Favorites is not null)
+            {
+                FavoriteTemplates = Context.Favorites.ToList();
+            }
+        }
+        finally
+        {
+            Loading = false;   
+        }
+
+    }
+
+    async Task RemoveFavorite(Guid id)
+    {
+        Logger.LogDebug("Entering RemoveFavorite Id {Id}", id);
+        var dbEntry = await Context.Favorites.FindAsync(id);
+        if (dbEntry is not null)
+        {
+            Context.Favorites.Remove(dbEntry);
+            await Context.SaveChangesAsync();
+        }
+
+        var localEntry = FavoriteTemplates.SingleOrDefault(e => e.Id == id);
+        if (localEntry is not null)
+        {
+            FavoriteTemplates.Remove(localEntry);
+        }
+    }
+}
