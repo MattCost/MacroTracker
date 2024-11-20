@@ -4,9 +4,9 @@
 @attribute [StreamRendering]
 @rendermode InteractiveServer
 @using Microsoft.EntityFrameworkCore
-@inject ILogger<Today> Logger
+@inject ILogger<Favorites> Logger
 @inject IDbContextFactory<MacroTrackingDbContext> MacroTrackingDbContextFactory
-@inject IHttpContextAccessor httpContextAccessor;
+@inherits PageBase
 
 
 <PageTitle>Manage Favorites</PageTitle>
@@ -49,7 +49,6 @@ else
 @code {
     bool Loading = true;
     List<MacroEntryFavorite> FavoriteTemplates = new();
-    string UserId => httpContextAccessor?.HttpContext?.Request.Headers["X-MS-CLIENT-PRINCIPAL-ID"].ToString() ?? "unknown";
     MacroTrackingDbContext Context = default!;
     protected override async Task OnInitializedAsync()
     {

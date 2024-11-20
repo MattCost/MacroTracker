@@ -6,8 +6,7 @@
 @using Microsoft.EntityFrameworkCore
 @inject ILogger<Today> Logger
 @inject IDbContextFactory<MacroTrackingDbContext> MacroTrackingDbContextFactory
-@inject IHttpContextAccessor httpContextAccessor;
-
+@inherits PageBase;
 
 <PageTitle>Macro Tracker</PageTitle>
 
@@ -103,8 +102,6 @@ else
     double TotalFiber => Entries.Select(entry => entry.FiberGrams).Sum();
     double TotalFat => Entries.Select(entry => entry.FatGrams).Sum();
     double TotalCalories => Entries.Select(entry => entry.Calories).Sum();
-    string UserId => httpContextAccessor?.HttpContext?.Request.Headers["X-MS-CLIENT-PRINCIPAL-ID"].ToString() ?? "unknown";
-
     protected override async Task OnInitializedAsync()
     {
         Loading = true;
@@ -131,6 +128,8 @@ else
         {
             Loading = false;
         }
+
+        Logger.LogDebug("User Id {UserId}", UserId);
     }
 
     async Task RemoveEntryAsync(Guid id)
