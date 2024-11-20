@@ -35,7 +35,7 @@ resource "azurerm_linux_web_app" "website" {
   auth_settings_v2 {
     auth_enabled           = true
     default_provider       = "google"
-    excluded_paths         = ["/", "/*.css", "/favicon.png","/lib/*", "/_framework/*"]
+    excluded_paths         = ["/", "/*.css", "/favicon.png", "/lib/*", "/_framework/*"]
     unauthenticated_action = "RedirectToLoginPage"
     require_authentication = true
 
@@ -63,6 +63,12 @@ resource "azurerm_linux_web_app" "website" {
     # API__CalledAPIScopes = "${local.api_uri}/${local.api_access_scope}"
     # API__Scope           = "${local.api_uri}/${local.api_access_scope}"
     # API__BaseUrl         = "https://${azurerm_linux_web_app.api.default_hostname}/api/"
+  }
+
+  connection_string {
+    name  = "AZURE_SQL"
+    type  = "SQLAzure"
+    value = "Server=tcp:${azurerm_mssql_server.server.fully_qualified_domain_name},1433;Initial Catalog=${azurerm_mssql_database.db.name};Persist Security Info=False;User ID=${var.sql_db_admin_username};Password=${local.admin_password};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
   }
 
   sticky_settings {
