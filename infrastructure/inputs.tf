@@ -7,3 +7,15 @@ variable "google_client_secret" {
   sensitive = true
 
 }
+
+variable "sql_db_admin_username" {
+  type = string
+  default = "admin_sql"  
+}
+
+variable "sql_db_admin_password" {
+  type = string
+  sensitive = true
+  default = null
+}
+

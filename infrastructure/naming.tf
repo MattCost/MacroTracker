@@ -25,3 +25,17 @@ resource "azurecaf_name" "website" {
   suffixes      = ["website", local.environment]
   clean_input   = true
 }
+
+resource "azurecaf_name" "sql_server" {
+  name = local.appName
+  resource_type = "azurerm_mssql_server"
+  suffixes = [local.environment]
+  clean_input = true  
+}
+
+resource "azurecaf_name" "sql_database" {
+  name = local.appName
+  resource_type = "azurerm_mssql_database"
+  suffixes = [local.environment]
+  clean_input = true  
+}

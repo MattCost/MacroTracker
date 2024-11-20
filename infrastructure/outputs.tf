@@ -9,3 +9,16 @@ output "app_service_plan_name" {
 output "website_name" {
   value = azurecaf_name.website.result
 }
+
+output "sql_database_name" {
+  value = azurecaf_name.sql_database.result
+}
+
+output "sql_server_name" {
+  value = azurecaf_name.sql_server.result
+}
+
+output "sql_server_admin_password" {
+  value = local.admin_password
+  sensitive = true
+}
