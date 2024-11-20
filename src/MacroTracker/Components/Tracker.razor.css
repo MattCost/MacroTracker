@@ -1,0 +1,29 @@
+﻿div.test1 {
+    display: table;
+    width: 25%;
+    table-layout: fixed;
+    /* For cells of equal size */
+}
+
+div.test1 span {
+    display: table-cell;
+    text-align: center;
+}
+
+div.row1 {
+    display: inline-flex;
+    flex-direction: row;
+    margin-bottom: 2px;
+}
+
+div.row1 button {
+    margin-left: 2px;
+    margin-right: 2px;
+    min-width: 33%;
+}
+
+div.col1 {
+    display: inline-flex;
+    flex-direction: column;
+    text-align: center;
+}
