@@ -19,3 +19,11 @@ variable "sql_db_admin_password" {
   default = null
 }
 
+
+variable "sql_db_admin_azuread_username" {
+  type = string
+}
+
+variable "sql_db_admin_azuread_objectid" {
+  type = string
+}

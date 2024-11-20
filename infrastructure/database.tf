@@ -16,8 +16,18 @@ resource "azurerm_mssql_server" "server" {
   name                         = azurecaf_name.sql_database.result
   resource_group_name          = azurerm_resource_group.this.name
   location                     = azurerm_resource_group.this.location
+  
+  # Enable the SQL Admin
   administrator_login          = var.sql_db_admin_username
   administrator_login_password = local.admin_password
+  
+  # ALso enable Azure AD Admin
+  azuread_administrator {
+    azuread_authentication_only = false # Set to false, so the SQL Admin remains enabled
+    login_username = var.sql_db_admin_azuread_username
+    object_id = var.sql_db_admin_azuread_objectid
+    
+  }
   version                      = "12.0"
 }
 
