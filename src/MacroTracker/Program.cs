@@ -1,4 +1,6 @@
 using MacroTracker.Components;
+using MacroTracker.Services;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -7,6 +9,9 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 builder.Services.AddHttpContextAccessor();
+
+var sqlConnString = builder.Configuration.GetConnectionString("AZURE_SQL");
+builder.Services.AddDbContextFactory<MacroTrackingDbContext>(options => options.UseSqlServer(sqlConnString));
 
 var app = builder.Build();
 
