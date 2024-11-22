@@ -2,6 +2,13 @@ using MacroTracker.Components;
 using MacroTracker.Services;
 using Microsoft.EntityFrameworkCore;
 
+// Hacky work around for local runs. Dotnet makes too many inotify watches on a linux box, is the app is started and stopped over and over.
+// Issue has been going on since 2016 and still not fixed
+if(string.Equals(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"), "Development"))
+{
+    Environment.SetEnvironmentVariable("DOTNET_USE_POLLING_FILE_WATCHER","1");
+}
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -9,6 +16,8 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 builder.Services.AddHttpContextAccessor();
+
+builder.Services.AddScoped<TimeProvider, BrowserTimeProvider>();
 
 var sqlConnString = builder.Configuration.GetConnectionString("AZURE_SQL");
 builder.Services.AddDbContextFactory<MacroTrackingDbContext>(options => options.UseSqlServer(sqlConnString));

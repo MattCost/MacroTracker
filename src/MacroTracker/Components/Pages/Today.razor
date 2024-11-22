@@ -8,6 +8,8 @@
 @inject IDbContextFactory<MacroTrackingDbContext> MacroTrackingDbContextFactory
 @inherits PageBase;
 
+<LocalTimeZoneDetector />
+
 <PageTitle>Macro Tracker</PageTitle>
 
 <h1>Macro Tracker!</h1>
@@ -18,12 +20,13 @@
 }
 else
 {
-
     <table class="table">
         <thead>
             <tr>
-                <th>Date</th>
-                <th>Time</th>
+                <th>Date (UTC)</th>
+                <th>Time (UTC)</th>
+                <th>Local Date</th>
+                <th>Local Time</th>
                 <th>Protein</th>
                 <th>Carbs</th>
                 <th>Fiber</th>
@@ -38,6 +41,8 @@ else
                 <tr>
                     <td>@entry.DateTime.ToShortDateString()</td>
                     <td>@entry.DateTime.ToShortTimeString()</td>
+                    <td><LocalDateTime FormatString="yyyy/MM/dd" DateTime="entry.DateTime" /></td>
+                    <td><LocalDateTime FormatString="hh:mm tt" DateTime="entry.DateTime" /></td>
                     <td>@entry.ProteinGrams</td>
                     <td>@entry.CarbsGrams</td>
                     <td>@entry.FiberGrams</td>
@@ -94,9 +99,7 @@ else
     Tracker carbTracker = default!;
     Tracker fiberTracker = default!;
     Tracker fatTracker = default!;
-
     string favoriteName = string.Empty;
-
     double TotalProtein => Entries.Select(entry => entry.ProteinGrams).Sum();
     double TotalCarbs => Entries.Select(entry => entry.CarbsGrams).Sum();
     double TotalFiber => Entries.Select(entry => entry.FiberGrams).Sum();
@@ -106,18 +109,45 @@ else
     {
         Loading = true;
 
+        /*
+            I need a date in UTC, that corresponds to midnight in the browsers time zone.
+            We know what timezone they are in.
+            We know the current UTC time.
+            Take UTC now, convert to local time.
+            Drop time part. 
+            Convert back to utc!           
+        */
+        var test1 = new DateTime(2024, 11, 22, 00, 00, 0, DateTimeKind.Utc); // Midnight utc, should be 7 pm the date before east coast time
+        var localTest1 = ToLocalDateTime(test1);
+        var localTodayTest1 =localTest1.Date;
+        var startOfDayTest1 = ToUTCDateTime(localTodayTest1);
+
+        var utcNow = DateTime.UtcNow;
+        var localNow = ToLocalDateTime(utcNow);
+        var localToday = localNow.Date;
+        var startOfLocalDayInUTC = ToUTCDateTime(localToday);
+       
+            
+
         try
         {
             Context = await MacroTrackingDbContextFactory.CreateDbContextAsync();
 
             if (Context is not null && Context.Entries is not null)
             {
-                var entries = Context.Entries.Where(entry => entry.DateTime > DateTime.Today && entry.OwnerId == UserId);
+                var usersEntries = Context.Entries.Where( entry => entry.OwnerId == UserId);
+                Logger.LogDebug("UsersEntries Count {Count}", usersEntries.Count());
+                var todayEntries = usersEntries.Where( entry => entry.DateTime >= startOfLocalDayInUTC);
+                Logger.LogDebug("todayEntries Count {Count}", todayEntries.Count());
+
+                    Entries = await todayEntries.OrderBy( entry => entry.DateTime).ToListAsync();
+
+                @* var entries = Context.Entries.Where(entry => entry.DateTime.Date >= startOfLocalDayInUTC && entry.OwnerId == UserId).OrderBy( e => e.DateTime);
 
                 if (entries is not null)
                 {
                     Entries = await entries.ToListAsync();
-                }
+                } *@
 
                 // Can we do it in 1 line, or do we need null checking?
                 Favorites = await Context.Favorites.Where(e => e.OwnerId == UserId).ToListAsync();
