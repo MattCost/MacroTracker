@@ -66,26 +66,34 @@ else
 
     <h3>Add New Entry</h3>
     <Tracker Name="Protein" @ref="proteinTracker" />
-    <Tracker Name="Carbs" @ref="carbTracker" />
-    <Tracker Name="Fiber" @ref="fiberTracker" />
-    <Tracker Name="Fat" @ref="fatTracker" />
+    <Tracker Name="Carbs"  @ref="carbTracker" />
+    <Tracker Name="Fiber"  @ref="fiberTracker" />
+    <Tracker Name="Fat"  @ref="fatTracker" />
 
     <div>
-        <button @onclick="AddNewEntryAsync">Add Entry</button>
+        <button class="btn btn-primary" @onclick="AddNewEntryAsync">Add Entry</button>
     </div>
+
     <div>
         <InputText @bind-Value="favoriteName"></InputText>
-        <button @onclick="SaveAndAddNewEntryAsync">Add + Save as Favorite</button>
+        <button class="btn btn-primary" @onclick="SaveAndAddNewEntryAsync">Add + Save as Favorite</button>
     </div>
-    <div>
-        <InputSelect id="Favorite"Actions @bind-Value="SelectedFavoriteId">
-            @foreach (var favorite in Favorites)
-            {
-                <option value="@favorite.Id">@favorite.Name</option>
-            }
-        </InputSelect>
-        <button @onclick="async () => await AddFromFavoriteAsync(SelectedFavoriteId)">Add</button>
-    </div>
+
+    @if(Favorites.Any())
+    {
+        <div>
+            <form name="dummy">
+            <InputSelect id="Favorite"Actions @bind-Value="SelectedFavoriteId" autocomplete="off" >
+                <option selected="selected" disabled>Select a Favorite</option>
+                @foreach (var favorite in Favorites)
+                {
+                    <option value="@favorite.Id">@favorite.Name</option>
+                }
+            </InputSelect>
+            <button class="btn btn-primary" @onclick="async () => await AddFromFavoriteAsync(SelectedFavoriteId)">Add</button>
+            </form>
+        </div>
+    }
 
 }
 
@@ -117,11 +125,6 @@ else
             Drop time part. 
             Convert back to utc!           
         */
-        var test1 = new DateTime(2024, 11, 22, 00, 00, 0, DateTimeKind.Utc); // Midnight utc, should be 7 pm the date before east coast time
-        var localTest1 = ToLocalDateTime(test1);
-        var localTodayTest1 =localTest1.Date;
-        var startOfDayTest1 = ToUTCDateTime(localTodayTest1);
-
         var utcNow = DateTime.UtcNow;
         var localNow = ToLocalDateTime(utcNow);
         var localToday = localNow.Date;

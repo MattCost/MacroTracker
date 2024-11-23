@@ -1,13 +1,13 @@
-﻿<div>@Name : @Count</div>
-
+﻿
 <div class="col1">
-    <div class="row1">
-        <button class="btn btn-primary" @onclick="()=>ChangeCount(1)">+1</button>
-        <button class="btn btn-primary" @onclick="()=>ChangeCount(5)">+5</button>
-        <button class="btn btn-primary" @onclick="()=>ChangeCount(10)">+10</button>
+    <div >@Name : @Count</div>
+    <div class="row1 btn-group">
+        <button class="btn btn-secondary" @onclick="()=>ChangeCount(1)">+1</button>
+        <button class="btn btn-secondary" @onclick="()=>ChangeCount(5)">+5</button>
+        <button class="btn btn-secondary" @onclick="()=>ChangeCount(10)">+10</button>
     </div>
 
-    <div class="row1">
+    <div class="row1 btn-group">
         <button class="btn btn-secondary" @onclick="()=>ChangeCount(-1)">-1</button>
         <button class="btn btn-secondary" @onclick="()=>ChangeCount(-5)">-5</button>
         <button class="btn btn-secondary" @onclick="()=>ChangeCount(-10)">-10</button>
