@@ -37,20 +37,20 @@ public class PageBase : ComponentBase
         }
     }
 
-    protected DateTime ToLocalDateTime(DateTime dateTime)
+    protected DateTime UsersTimeFromUTC(DateTime dateTime)
     {
         if(TimeProvider != null && TimeProvider is BrowserTimeProvider browserTimeProvider)
         {
-            return browserTimeProvider.ToLocalDateTime(dateTime);
+            return TimeZoneInfo.ConvertTimeFromUtc(dateTime, browserTimeProvider.LocalTimeZone);
         }
         return dateTime;
     }
 
-    protected DateTime ToUTCDateTime(DateTime dateTime)
+    protected DateTime UsersTimeToUTC(DateTime dateTime)
     {
         if(TimeProvider != null && TimeProvider is BrowserTimeProvider browserTimeProvider)
         {
-            return browserTimeProvider.ToUTCDateTime(dateTime);
+            return TimeZoneInfo.ConvertTimeToUtc(dateTime, browserTimeProvider.LocalTimeZone);
         }
         return dateTime;
     }
