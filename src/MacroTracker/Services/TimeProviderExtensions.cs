@@ -17,13 +17,4 @@ public static class TimeProviderExtensions
         local = DateTime.SpecifyKind(local, DateTimeKind.Local);
         return local;
     }
-
-    public static DateTime ToUTCDateTime(this TimeProvider timeProvider, DateTime dateTime)
-    {
-        return dateTime.Kind switch
-        {
-            DateTimeKind.Local => DateTime.SpecifyKind(TimeZoneInfo.ConvertTimeToUtc(dateTime, timeProvider.LocalTimeZone), DateTimeKind.Utc),
-            _ => dateTime
-        };
-    }
 }
