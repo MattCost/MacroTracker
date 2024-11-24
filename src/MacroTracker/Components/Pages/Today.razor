@@ -1,8 +1,9 @@
 ﻿@page "/today"
+@rendermode @(new InteractiveServerRenderMode(false))
+@* @rendermode InteractiveServer *@
 @using MacroTracker.Models
 @using MacroTracker.Services
 @attribute [StreamRendering]
-@rendermode InteractiveServer
 @using Microsoft.EntityFrameworkCore
 @inject ILogger<Today> Logger
 @inject IDbContextFactory<MacroTrackingDbContext> MacroTrackingDbContextFactory
@@ -135,8 +136,7 @@ else
     protected override async Task OnInitializedAsync()
     {
         Loading = true;
-
-
+    
         // Take the Current time in UTC, convert to the users local time. Drop the time part. Convert back to UTC to get the
         var utcNow = DateTime.UtcNow;
         var localNow = UsersTimeFromUTC(utcNow);
