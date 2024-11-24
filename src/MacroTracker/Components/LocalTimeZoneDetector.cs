@@ -13,17 +13,6 @@ public sealed class LocalTimeZoneDetector : ComponentBase
     public string TimeZoneJsFilename { get; set; } = "./lib/js/timezone.js";
 
     public string TimeZone { get; set; } = string.Empty;
-    public DateTime ToLocalDateTime(DateTime input)
-    {
-        if( TimeProvider is BrowserTimeProvider browserTimeProvider && browserTimeProvider.IsLocalTimeZoneSet)
-        {
-            return TimeProvider.ToLocalDateTime(input);
-        }
-        else
-        {
-            return input;
-        }
-    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
