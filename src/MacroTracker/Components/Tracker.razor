@@ -1,13 +1,14 @@
-﻿
-<div class="col1">
-    <div >@Name : @Count</div>
-    <div class="row1 btn-group">
+﻿<div class="tracker-container">
+    <div class="header-row">
+        <button class="btn btn-primary">@Name <span class="badge badge-light">@Count</span></button>
+    </div>
+    <div class="tracker-button-row btn-group">
         <button class="btn btn-secondary" @onclick="()=>ChangeCount(1)">+1</button>
         <button class="btn btn-secondary" @onclick="()=>ChangeCount(5)">+5</button>
         <button class="btn btn-secondary" @onclick="()=>ChangeCount(10)">+10</button>
     </div>
 
-    <div class="row1 btn-group">
+    <div class="tracker-button-row btn-group">
         <button class="btn btn-secondary" @onclick="()=>ChangeCount(-1)">-1</button>
         <button class="btn btn-secondary" @onclick="()=>ChangeCount(-5)">-5</button>
         <button class="btn btn-secondary" @onclick="()=>ChangeCount(-10)">-10</button>
