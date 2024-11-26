@@ -1,13 +1,15 @@
 ﻿@page "/today"
-@rendermode @(new InteractiveServerRenderMode(false))
-@* @rendermode InteractiveServer *@
+@attribute [StreamRendering]
+@rendermode InteractiveServer
 @using MacroTracker.Models
 @using MacroTracker.Services
-@attribute [StreamRendering]
 @using Microsoft.EntityFrameworkCore
 @inject ILogger<Today> Logger
 @inject IDbContextFactory<MacroTrackingDbContext> MacroTrackingDbContextFactory
+@inject PersistentComponentState ApplicationState
 @inherits PageBase;
+@implements IDisposable
+
 
 <LocalTimeZoneDetector />
 
@@ -21,52 +23,7 @@
 }
 else
 {
-    <table class="table">
-    <thead>
-        <tr>
-            @* <th>Date</th> *@
-            <th>Time</th>
-            <th>Protein</th>
-            <th>Carbs</th>
-            <th>Fiber</th>
-            <th>Fat</th>
-            <th>Calories</th>
-            <th>Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var entry in Entries)
-            {
-                <tr>
-                    @* <td>@entry.DateTime.ToShortDateString()</td>
-                    <td>@entry.DateTime.ToShortTimeString()</td> *@
-                    @* <td>
-                        <LocalDateTime FormatString="yyyy/MM/dd" DateTime="entry.DateTime" />
-                    </td> *@
-                    <td>
-                        <LocalDateTime FormatString="hh:mm tt" DateTime="entry.DateTime" />
-                    </td>
-                    <td>@entry.ProteinGrams</td>
-                    <td>@entry.CarbsGrams</td>
-                    <td>@entry.FiberGrams</td>
-                    <td>@entry.FatGrams</td>
-                    <td>@entry.Calories</td>
-                    <td><button class="btn btn-secondary" @onclick="async () => await RemoveEntryAsync(entry.Id)">X</button>
-                    </td>
-                </tr>
-            }
-            <tr>
-                <td>Totals</td>
-                <td></td>
-                <td>@TotalProtein</td>
-                <td>@TotalCarbs</td>
-                <td>@TotalFiber</td>
-                <td>@TotalFat</td>
-                <td>@TotalCalories</td>
-                <td></td>
-            </tr>
-        </tbody>
-    </table>
+    <EntryTableView EntryModels=Entries />
 
     <div class="m-3">
     <h3>Quick Add</h3>
@@ -89,7 +46,7 @@ else
         }
         else
         {
-            <div>First Save An Entry as a Favorite</div>
+            <div>No Favorites found...</div>
         }
     </div>
 
@@ -119,7 +76,7 @@ else
 
 @code {
     bool Loading;
-    List<MacroEntryModel> Entries = new();
+    private List<MacroEntryModel> Entries = new();
     List<MacroEntryFavorite> Favorites = new();
     Guid SelectedFavoriteId = Guid.Empty;
     MacroTrackingDbContext Context = default!;
@@ -128,43 +85,70 @@ else
     Tracker fiberTracker = default!;
     Tracker fatTracker = default!;
     string favoriteName = string.Empty;
-    double TotalProtein => Entries.Select(entry => entry.ProteinGrams).Sum();
-    double TotalCarbs => Entries.Select(entry => entry.CarbsGrams).Sum();
-    double TotalFiber => Entries.Select(entry => entry.FiberGrams).Sum();
-    double TotalFat => Entries.Select(entry => entry.FatGrams).Sum();
-    double TotalCalories => Entries.Select(entry => entry.Calories).Sum();
+    private PersistingComponentStateSubscription _subscription;
     protected override async Task OnInitializedAsync()
     {
-        Loading = true;
-    
-        // Take the Current time in UTC, convert to the users local time. Drop the time part. Convert back to UTC to get the
-        var utcNow = DateTime.UtcNow;
-        var localNow = UsersTimeFromUTC(utcNow);
-        var localToday = localNow.Date;
-        var startOfLocalDayInUTC = UsersTimeToUTC(localToday);
+        Logger.LogTrace("Entering OnInitializedAsync");
+         _subscription = ApplicationState.RegisterOnPersisting(Persist, RenderMode.InteractiveServer);
 
-        try
+        Logger.LogTrace("Looking in application state");
+        if(ApplicationState.TryTakeFromJson<List<MacroEntryModel>>(nameof(Entries), out var entries))
         {
-            Context = await MacroTrackingDbContextFactory.CreateDbContextAsync();
+            Logger.LogTrace("Entries found in state");
+            Entries = entries ?? new(); 
+        }
+        else
+        {
+            Logger.LogTrace("Entries not found in state, loading from dbContext");
+            Loading = true;
+            await Task.Delay(2000);
 
-            if (Context is not null && Context.Entries is not null)
+            // Take the Current time in UTC, convert to the users local time. Drop the time part. Convert back to UTC to get the
+            var utcNow = DateTime.UtcNow;
+            var localNow = UsersTimeFromUTC(utcNow);
+            var localToday = localNow.Date;
+            var startOfLocalDayInUTC = UsersTimeToUTC(localToday);
+
+            try
             {
-                var usersEntries = Context.Entries.Where(entry => entry.OwnerId == UserId);
-                Logger.LogDebug("UsersEntries Count {Count}", usersEntries.Count());
+                Context = await MacroTrackingDbContextFactory.CreateDbContextAsync();
 
-                var todayEntries = usersEntries.Where(entry => entry.DateTime >= startOfLocalDayInUTC);
-                Logger.LogDebug("todayEntries Count {Count}", todayEntries.Count());
+                if (Context is not null && Context.Entries is not null)
+                {
+                    var usersEntries = Context.Entries.Where(entry => entry.OwnerId == UserId);
+                    Logger.LogDebug("UsersEntries Count {Count}", usersEntries.Count());
 
-                Entries = await todayEntries.OrderBy(entry => entry.DateTime).ToListAsync();
-                Favorites = await Context.Favorites.Where(e => e.OwnerId == UserId).ToListAsync();
+                    var todayEntries = usersEntries.Where(entry => entry.DateTime >= startOfLocalDayInUTC);
+                    Logger.LogDebug("todayEntries Count {Count}", todayEntries.Count());
+
+                    Entries = await todayEntries.OrderBy(entry => entry.DateTime).ToListAsync();
+                    Favorites = await Context.Favorites.Where(e => e.OwnerId == UserId).ToListAsync();
+                }
+            }
+            finally
+            {
+                Logger.LogTrace("Loading from dbCon text complete");
+                Loading = false;
             }
         }
-        finally
-        {
-            Loading = false;
-        }
-
+    
         Logger.LogDebug("User Id {UserId}", UserId);
+    }
+
+
+    private Task Persist()
+    {
+        Task.Delay(100).Wait(); 
+        return Task.Run( () => {
+            Logger.LogTrace("Entering Persist");
+            ApplicationState.PersistAsJson("dummy", 42);
+            ApplicationState.PersistAsJson(nameof(Entries), Entries);
+        });
+    }
+    public void Dispose()
+    {
+        Logger.LogTrace("Entering Dispose");
+        _subscription.Dispose();
     }
 
     async Task RemoveEntryAsync(Guid id)
