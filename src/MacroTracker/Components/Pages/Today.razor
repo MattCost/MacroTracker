@@ -110,46 +110,53 @@ else
     private async Task LoadStateAsync()
     {
         Logger.LogTrace("Looking in Session Storage");
-        var sessionResult = await ProtectedSessionStore.GetAsync<List<MacroEntryModel>>(nameof(Entries));
-        if (sessionResult.Success)
+        try
         {
-            Logger.LogTrace("Data found in session");
-            Entries = sessionResult.Value ?? new();
-            Loading = false;
-        }
-        else
-        {
-            Logger.LogTrace("Entries not found in state, loading from dbContext");
-
-            // Take the Current time in UTC, convert to the users local time. Drop the time part. Convert back to UTC to get the
-            var utcNow = DateTime.UtcNow;
-            var localNow = UsersTimeFromUTC(utcNow);
-            var localToday = localNow.Date;
-            var startOfLocalDayInUTC = UsersTimeToUTC(localToday);
-
-            try
+            var sessionResult = await ProtectedSessionStore.GetAsync<List<MacroEntryModel>>(nameof(Entries));
+            var sessionResult2 = await ProtectedSessionStore.GetAsync<List<MacroEntryFavorite>>(nameof(Favorites));
+            if (sessionResult.Success && sessionResult2.Success)
             {
-
-                if (Context is not null && Context.Entries is not null)
-                {
-                    var usersEntries = Context.Entries.Where(entry => entry.OwnerId == UserId);
-                    Logger.LogDebug("UsersEntries Count {Count}", usersEntries.Count());
-
-                    var todayEntries = usersEntries.Where(entry => entry.DateTime >= startOfLocalDayInUTC);
-                    Logger.LogDebug("todayEntries Count {Count}", todayEntries.Count());
-
-                    Entries = await todayEntries.OrderBy(entry => entry.DateTime).ToListAsync();
-                    Favorites = await Context.Favorites.Where(e => e.OwnerId == UserId).ToListAsync();
-
-                    await ProtectedSessionStore.SetAsync(nameof(Entries), Entries);
-                    await ProtectedSessionStore.SetAsync(nameof(Favorites), Favorites);
-                }
-            }
-            finally
-            {
-                Logger.LogTrace("Loading from dbContext text complete");
+                Logger.LogTrace("Data found in Session Storage");
+                Entries = sessionResult.Value ?? new();
+                Favorites = sessionResult2.Value ?? new();
                 Loading = false;
+                return;
             }
+        }
+        catch(JSDisconnectedException)
+        {
+            // ignore and continue loading from db
+        }
+        
+        Logger.LogTrace("Entries not found in session storage, loading from dbContext");
+
+        // Take the Current time in UTC, convert to the users local time. Drop the time part. Convert back to UTC to get the
+        var utcNow = DateTime.UtcNow;
+        var localNow = UsersTimeFromUTC(utcNow);
+        var localToday = localNow.Date;
+        var startOfLocalDayInUTC = UsersTimeToUTC(localToday);
+
+        try
+        {
+            if (Context is not null && Context.Entries is not null)
+            {
+                var usersEntries = Context.Entries.Where(entry => entry.OwnerId == UserId);
+                Logger.LogDebug("UsersEntries Count {Count}", usersEntries.Count());
+
+                var todayEntries = usersEntries.Where(entry => entry.DateTime >= startOfLocalDayInUTC);
+                Logger.LogDebug("todayEntries Count {Count}", todayEntries.Count());
+
+                Entries = await todayEntries.OrderBy(entry => entry.DateTime).ToListAsync();
+                Favorites = await Context.Favorites.Where(e => e.OwnerId == UserId).ToListAsync();
+
+                await ProtectedSessionStore.SetAsync(nameof(Entries), Entries);
+                await ProtectedSessionStore.SetAsync(nameof(Favorites), Favorites);
+            }
+        }
+        finally
+        {
+            Logger.LogTrace("Loading from dbContext text complete");
+            Loading = false;
         }
     }
 
