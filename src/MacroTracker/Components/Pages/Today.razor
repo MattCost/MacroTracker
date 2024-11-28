@@ -1,14 +1,13 @@
 ﻿@page "/today"
 @attribute [StreamRendering]
-@rendermode InteractiveServer
 @using MacroTracker.Models
 @using MacroTracker.Services
 @using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
 @inject ILogger<Today> Logger
 @inject IDbContextFactory<MacroTrackingDbContext> MacroTrackingDbContextFactory
-@inject PersistentComponentState ApplicationState
+@inject ProtectedSessionStorage ProtectedSessionStore
 @inherits PageBase;
-@implements IDisposable
 
 
 <LocalTimeZoneDetector />
@@ -32,7 +31,8 @@ else
         {
             <div class="input-group" style="max-width: fit-content;">
                 <span class="input-group-btn">
-                    <button class="btn btn-primary" @onclick="async () => await AddFromFavoriteAsync(SelectedFavoriteId)">Add</button>
+                    <button class="btn btn-primary"
+                        @onclick="async () => await AddFromFavoriteAsync(SelectedFavoriteId)">Add</button>
                 </span>
 
                 <InputSelect id="Favorite" Actions @bind-Value="SelectedFavoriteId" autocomplete="off" class="form-select">
@@ -75,7 +75,7 @@ else
 }
 
 @code {
-    bool Loading;
+    bool Loading = true;
     private List<MacroEntryModel> Entries = new();
     List<MacroEntryFavorite> Favorites = new();
     Guid SelectedFavoriteId = Guid.Empty;
@@ -85,22 +85,41 @@ else
     Tracker fiberTracker = default!;
     Tracker fatTracker = default!;
     string favoriteName = string.Empty;
-    private PersistingComponentStateSubscription _subscription;
+
     protected override async Task OnInitializedAsync()
     {
         Logger.LogTrace("Entering OnInitializedAsync");
-         _subscription = ApplicationState.RegisterOnPersisting(Persist, RenderMode.InteractiveServer);
 
-        Logger.LogTrace("Looking in application state");
-        if(ApplicationState.TryTakeFromJson<List<MacroEntryModel>>(nameof(Entries), out var entries))
+        Logger.LogDebug("User Id {UserId}", UserId);
+
+        Logger.LogDebug("Creating context");
+        Context = await MacroTrackingDbContextFactory.CreateDbContextAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        Logger.LogTrace("Entering OnAfterRenderAsync FirstRender? {First}", firstRender);
+        if (firstRender)
         {
-            Logger.LogTrace("Entries found in state");
-            Entries = entries ?? new(); 
+            Loading = true;
+            await LoadStateAsync();
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadStateAsync()
+    {
+        Logger.LogTrace("Looking in Session Storage");
+        var sessionResult = await ProtectedSessionStore.GetAsync<List<MacroEntryModel>>(nameof(Entries));
+        if (sessionResult.Success)
+        {
+            Logger.LogTrace("Data found in session");
+            Entries = sessionResult.Value ?? new();
+            Loading = false;
         }
         else
         {
             Logger.LogTrace("Entries not found in state, loading from dbContext");
-            Loading = true;
             await Task.Delay(2000);
 
             // Take the Current time in UTC, convert to the users local time. Drop the time part. Convert back to UTC to get the
@@ -111,7 +130,6 @@ else
 
             try
             {
-                Context = await MacroTrackingDbContextFactory.CreateDbContextAsync();
 
                 if (Context is not null && Context.Entries is not null)
                 {
@@ -123,33 +141,19 @@ else
 
                     Entries = await todayEntries.OrderBy(entry => entry.DateTime).ToListAsync();
                     Favorites = await Context.Favorites.Where(e => e.OwnerId == UserId).ToListAsync();
+
+                    await ProtectedSessionStore.SetAsync(nameof(Entries), Entries);
+                    await ProtectedSessionStore.SetAsync(nameof(Favorites), Favorites);
                 }
             }
             finally
             {
-                Logger.LogTrace("Loading from dbCon text complete");
+                Logger.LogTrace("Loading from dbContext text complete");
                 Loading = false;
             }
         }
-    
-        Logger.LogDebug("User Id {UserId}", UserId);
     }
 
-
-    private Task Persist()
-    {
-        Task.Delay(100).Wait(); 
-        return Task.Run( () => {
-            Logger.LogTrace("Entering Persist");
-            ApplicationState.PersistAsJson("dummy", 42);
-            ApplicationState.PersistAsJson(nameof(Entries), Entries);
-        });
-    }
-    public void Dispose()
-    {
-        Logger.LogTrace("Entering Dispose");
-        _subscription.Dispose();
-    }
 
     async Task RemoveEntryAsync(Guid id)
     {
@@ -164,7 +168,9 @@ else
         if (localEntry is not null)
         {
             Entries.Remove(localEntry);
+            await ProtectedSessionStore.SetAsync(nameof(Entries), Entries);
         }
+
     }
 
     async Task SaveEntryAsync()
@@ -213,6 +219,9 @@ else
 
         Logger.LogDebug("Saving Database Changes");
         await Context.SaveChangesAsync();
+
+        await ProtectedSessionStore.SetAsync(nameof(Entries), Entries);
+        await ProtectedSessionStore.SetAsync(nameof(Favorites), Favorites);
 
         ResetAll();
     }
@@ -268,6 +277,8 @@ else
             await Context.SaveChangesAsync();
             Logger.LogDebug("Adding to page model");
             Entries.Add(entryModel);
+            await ProtectedSessionStore.SetAsync(nameof(Entries), Entries);
+
         }
         else
         {
