@@ -16,63 +16,55 @@
 
 <h1>Macro Tracker!</h1>
 
-@if (Loading)
-{
-    <p><em>Loading...</em></p>
-}
-else
-{
-    <EntryTableView EntryModels=Entries />
+<EntryTableView EntryModels=Entries Loading=Loading EntryDeletedCallback=RemoveEntryAsync/>
 
-    <div class="m-3">
+<div class="m-3">
     <h3>Quick Add</h3>
 
     @if (Favorites.Any())
-        {
-            <div class="input-group" style="max-width: fit-content;">
-                <span class="input-group-btn">
-                    <button class="btn btn-primary"
-                        @onclick="async () => await AddFromFavoriteAsync(SelectedFavoriteId)">Add</button>
-                </span>
+    {
+        <div class="input-group" style="max-width: fit-content;">
+            <span class="input-group-btn">
+                <button class="btn btn-primary" disabled=@Loading
+                    @onclick="async () => await AddFromFavoriteAsync(SelectedFavoriteId)">Add</button>
+            </span>
 
-                <InputSelect id="Favorite" Actions @bind-Value="SelectedFavoriteId" autocomplete="off" class="form-select">
-                    <option value="@Guid.Empty" selected disabled>Select a Favorite</option>
-                    @foreach (var favorite in Favorites)
-                    {
-                        <option value="@favorite.Id">@favorite.Name</option>
-                    }
-                </InputSelect>
-            </div>
-        }
-        else
-        {
-            <div>No Favorites found...</div>
-        }
-    </div>
-
-    <div class="m-3">
-        <h3>Add New Entry</h3>
-        <div style="display: flex; flex-flow: row wrap; gap: 5px; align-items: center;">
-            <Tracker Name="Protein" @ref="proteinTracker" />
-            <Tracker Name="Carbs" @ref="carbTracker" />
-            <Tracker Name="Fiber" @ref="fiberTracker" />
-            <Tracker Name="Fat" @ref="fatTracker" />
-            <div>
-                <button class="btn btn-warning" @onclick="ResetAll">Reset All</button>
-            </div>
+            <InputSelect id="Favorite" Actions @bind-Value="SelectedFavoriteId" autocomplete="off" class="form-select">
+                <option value="@Guid.Empty" selected disabled>Select a Favorite</option>
+                @foreach (var favorite in Favorites)
+                {
+                    <option value="@favorite.Id">@favorite.Name</option>
+                }
+            </InputSelect>
         </div>
+    }
+    else
+    {
+        <div>No Favorites found...</div>
+    }
+</div>
 
+<div class="m-3">
+    <h3>Add New Entry</h3>
+    <div style="display: flex; flex-flow: row wrap; gap: 5px; align-items: center;">
+        <Tracker Name="Protein" @ref="proteinTracker" />
+        <Tracker Name="Carbs" @ref="carbTracker" />
+        <Tracker Name="Fiber" @ref="fiberTracker" />
+        <Tracker Name="Fat" @ref="fatTracker" />
         <div>
-            <label>
-                Favorite Name:
-                <InputText @bind-Value="favoriteName" placeholder="Optional Name"></InputText>
-            </label>
-            <button class="btn btn-primary" @onclick="SaveEntryAsync">Save Entry</button>
+            <button class="btn btn-warning" @onclick="ResetAll">Reset All</button>
         </div>
     </div>
 
+    <div>
+        <label>
+            Favorite Name:
+            <InputText @bind-Value="favoriteName" placeholder="Optional Name"></InputText>
+        </label>
+        <button class="btn btn-primary" @onclick="SaveEntryAsync" disabled=@Loading>Save Entry</button>
+    </div>
+</div>
 
-}
 
 @code {
     bool Loading = true;
@@ -123,11 +115,11 @@ else
                 return;
             }
         }
-        catch(JSDisconnectedException)
+        catch (JSDisconnectedException)
         {
             // ignore and continue loading from db
         }
-        
+
         Logger.LogTrace("Entries not found in session storage, loading from dbContext");
 
         // Take the Current time in UTC, convert to the users local time. Drop the time part. Convert back to UTC to get the

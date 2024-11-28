@@ -1,6 +1,6 @@
 @using MacroTracker.Models
 
-    <table class="table">
+<table class="table">
     <thead>
         <tr>
             @* <th>Date</th> *@
@@ -14,7 +14,15 @@
         </tr>
     </thead>
     <tbody>
-        @foreach (var entry in EntryModels)
+        @if (Loading)
+        {
+            <tr>
+                <td>Loading...</td>
+            </tr>
+        }
+        else
+        {
+            @foreach (var entry in EntryModels)
             {
                 <tr>
                     <td>
@@ -30,23 +38,28 @@
                 </tr>
             }
             <tr>
-                <td>Totals</td>
-                <td></td>
-                <td>@TotalProtein</td>
-                <td>@TotalCarbs</td>
-                <td>@TotalFiber</td>
-                <td>@TotalFat</td>
-                <td>@TotalCalories</td>
-                <td></td>
-            </tr>
-        </tbody>
-    </table>
+            <td>Totals</td>
+            <td>@TotalProtein</td>
+            <td>@TotalCarbs</td>
+            <td>@TotalFiber</td>
+            <td>@TotalFat</td>
+            <td>@TotalCalories</td>
+            <td></td>
+        </tr>
+        }
+    </tbody>
+</table>
 
 
 @code {
     [Parameter]
-    public List<MacroEntryModel> EntryModels {get;set;} = new();
+    public List<MacroEntryModel> EntryModels { get; set; } = new();
 
+    [Parameter]
+    public bool Loading { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid> EntryDeletedCallback { get; set; }
     double TotalProtein => EntryModels.Select(entry => entry.ProteinGrams).Sum();
     double TotalCarbs => EntryModels.Select(entry => entry.CarbsGrams).Sum();
     double TotalFiber => EntryModels.Select(entry => entry.FiberGrams).Sum();
@@ -55,6 +68,6 @@
 
     async Task RemoveEntryAsync(Guid id)
     {
-        await Task.Delay(500);
+        await EntryDeletedCallback.InvokeAsync(id);
     }
 }
