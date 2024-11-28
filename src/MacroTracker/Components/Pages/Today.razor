@@ -120,7 +120,6 @@ else
         else
         {
             Logger.LogTrace("Entries not found in state, loading from dbContext");
-            await Task.Delay(2000);
 
             // Take the Current time in UTC, convert to the users local time. Drop the time part. Convert back to UTC to get the
             var utcNow = DateTime.UtcNow;
